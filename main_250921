@@ -185,8 +185,21 @@ def sequence8(): # CODE OF SEQUENCE EIGHT, CURRENTLY SKIPPING SEQUENCE NINE
     robot.straight(50)
     follow_line()
 
-def sequence9Dyb(): # CURRENTLY EMPTY
-    wait(1)
+def sequence9(VERSION='LUKAS'): # BULLSEYE
+    if VERSION == 'LUKAS':
+        robot.straight(750)
+        robot.stop()
+        turnLeft(25)
+        robot.straight(300)
+        robot.stop()
+        find_bottle(FULL_ANGLE=90, TURNSPEED= 3)
+        approch_bottle()
+        grab()
+        robot.straight(-1000)
+        grab(DIRECTION='DOWN')
+        wait(1)
+    if VERSION == 'DYB':
+        print('nothing yet')
 
 def sequence10(VERSION='normal'): #CODE OF SEQUENCE 10, EITHER AROUND BOTTLE OR SKIPPING OBSTACLE
     if VERSION == 'normal':
@@ -278,22 +291,22 @@ def follow_line(SPEED = 150, P_GAIN = 1.2, SIDE = 'LEFT', BREAKABLE = 0): #FOLLO
 
 def turnRight(TURNANGLE = 90, ROTATION_SPEED = 75): # TURNS RIGHT, TURNANGLE DEGREES
     ang = 0
-    gyro_sensor.reset_angle(0)
+    gyro_sensor.reset_angle(0)      #resets gyro sensor
     robot.drive(0,ROTATION_SPEED)
     print('begin right turn')
 
-    while  ang < TURNANGLE:
+    while  ang < TURNANGLE:         #while loop turns robot while angle is under TURNANGLE
         ang = gyro_sensor.angle()
     print('finished right turn')
     robot.stop()
 
 def turnLeft(TURNANGLE = 90, ROTATION_SPEED = 75): # TURNS LEFT, TURNANGLE DEGREES
     ang = 0
-    gyro_sensor.reset_angle(0)
+    gyro_sensor.reset_angle(0)      #resets gyro sensor
     robot.drive(0,-ROTATION_SPEED)
     print('begin left turn')
 
-    while  ang > -TURNANGLE:
+    while  ang > -TURNANGLE:        #while loop turns robot while angle is under TURNANGLE
         ang = gyro_sensor.angle()
     print('finished left turn')
     robot.stop()
@@ -310,10 +323,10 @@ def average_ultra_sensor(): # TAKES 10 MEASUREMENTS OF ULTRASOUND SENSOR, AND RE
 
         for i in range(meas):
             print(ultra_sensor.distance())
-            ave_dist = ave_dist + ultra_sensor.distance()
+            ave_dist = ave_dist + ultra_sensor.distance()   #adds the value of the distance to total value
             print(ave_dist)
 
-        ave_dist = ave_dist / meas
+        ave_dist = ave_dist / meas #finds the average
         print('Average distance is ')
         print(ave_dist)
         return ave_dist
@@ -378,27 +391,27 @@ def panic_routine(SIDE = 'LEFT'): # ROUTINE DONE WHEN WHITE HAVENT BEEN FOUND FO
     print('PANIK!!!')
 
     if direction == 'RIGHT':
-        #på højre side af linjen
+        #right side of line
         for i in range (4):
             turnLeft(TURNANGLE = 90)
             find_color(TIMER = 2000)
-            turnLEFT(TURNANGLE = 180)
+            turnLeft(TURNANGLE = 180)
             find_color(TIMER = 2000)
 
     else:
-        #på venstre side af linjen
+        #left side of line
         for i in range (4):
             turnLeft(TURNANGLE = 90)
             find_color(TIMER = 2000)
-            turnLEFT(TURNANGLE = 180)
+            turnLeft(TURNANGLE = 180)
             find_color(TIMER = 2000)
 
-def find_color(SPEED = 150, COLOR = 'GREY', TURNANGLE = 0, TIMER = 0): #DRIVES STRAIGHT FORWARDS UNTIL IT SEE _COLOR
+def find_color(SPEED = 150, COLOR = 'GREY', TURNANGLE = 0, TIMER = 0): #DRIVES STRAIGHT FORWARDS UNTIL IT SEE COLOR
     reset_time = timer.time()
 
     robot.drive(SPEED,TURNANGLE) #drive with 360deg/sec
     if COLOR == 'WHITE':
-        while average_line_sensor() < 70:
+        while average_line_sensor() < 70: #drives untill on white
             #print('LINESENSOR (WHITE)')
             #print(average_line_sensor())
             current_time = timer.time()
@@ -407,7 +420,7 @@ def find_color(SPEED = 150, COLOR = 'GREY', TURNANGLE = 0, TIMER = 0): #DRIVES S
     
     elif COLOR == 'GREY':
         robot.drive(SPEED,TURNANGLE) #drive with 360deg/sec
-        while average_line_sensor() > 55:
+        while average_line_sensor() > 55: #drives untill on grey
             #print('LINESENSOR (GREY)')
             #print(average_line_sensor())
             wait(1)
@@ -419,23 +432,15 @@ def find_bottle(FULL_ANGLE = 45, TURNSPEED = 5, DIRECTION = 'RIGHT'): #SWEEP OF 
     angle = 0
     low_distance = 1000
     low_angle = 0
-
-    for angle in range(0,FULL_ANGLE,TURNSPEED):
-        if DIRECTION == 'RIGHT':
-            turnRight(TURNANGLE = TURNSPEED)
-        else:
-            turnLeft(TURNANGLE = TURNSPEED)
-
-        sensorVar = average_ultra_sensor()
-
-        if sensorvar < low_distance:
+    turnLeft(TURNANGLE=FULL_ANGLE/2) #turns half the angle left
+    while FULL_ANGLE >= angle: #turns right full angle while checking distance with intervals of turnspeed degrees
+        turnRight(TURNANGLE = TURNSPEED)
+        sensorVar = ultra_sensor.distance()
+        if sensorVar < low_distance: # the lowest distance values are saved
             low_distance = sensorVar
             low_angle = angle
-
-    if DIRECTION == 'RIGHT':
-        turnLeft(TURNANGLE = (FULL_ANGLE-low_angle))
-    else:
-        turnRight(TURNANGLE = (FULL_ANGLE-low_angle))
+        angle = angle + TURNSPEED
+    turnLeft(TURNANGLE=FULL_ANGLE-low_angle) #returns to the lowest distance
         
     """
     Original kode:
@@ -466,7 +471,7 @@ def approach_bottle(sensorVar = 1000): #APPROACHES BOTTLE WITH A SPEED DEFINED B
     
     i = 0
 
-    while sensorVar > 100:
+    while sensorVar > 100: #drives towards bottle while distance is above 100mm
         sensorVar = average_ultra_sensor()
         follow_line(BREAKABLE = 1, SPEED = 50, P_GAIN = 1)
         wait(1)
@@ -482,12 +487,16 @@ def approach_bottle(sensorVar = 1000): #APPROACHES BOTTLE WITH A SPEED DEFINED B
     #print('bottle has been found!')
 
 def around_bottle(rotation='LEFT'): #GO AROUND THE BOTTLE (SEQUENCE 8 & 10)
+#robot turns 45 and drives around untill grey line found
     if rotation == 'LEFT':
         turnLeft(TURNANGLE=45)
+        robot.straight(150)
         find_color(TURNANGLE = 15)
     elif rotation == 'RIGHT':
         turnRight(TURNANGLE=45)
+        robot.straight(150)
         find_color(TURNANGLE = -15)
+
 
 def loop(): #MAIN CODE - THIS CODE CALLS THE SUBFUNCTIONS
     follow_line()
