@@ -6,6 +6,8 @@ from pybricks.tools import wait, StopWatch, DataLog
 from pybricks.robotics import DriveBase
 from pybricks.media.ev3dev import SoundFile, ImageFile
 
+from threading import Thread
+
 
 # This program requires LEGO EV3 MicroPython v2.0 or higher.
 # Click "Open user guide" on the EV3 extension tab for more information.
@@ -30,25 +32,23 @@ timer = StopWatch()
 #hvid 52 46 65   // 86 87
 #sort 6 9        // 9 8
 
-GREY = 48
+GREY = 49
 WHITE = 80
-BLACK = 15
+BLACK = 13
 
 threshold = (GREY + WHITE) / 2
+
+ev3.speaker.set_volume(volume=150, which= '_all_')
 
 def sequence1(): # SWITCH LANE TWICE
     """
     This sequence 
     """
     switch_lane(TURN_SIDE='RIGHT')
-    follow_line(SIDE = 'RIGHT', P_GAIN = 1)
+    follow_line(SIDE = 'RIGHT', P_GAIN = 1.2)
     switch_lane(TURN_SIDE='LEFT')
 
 def sequence2(): # MOVE THE BOTTLE  
-    """
-    The sequence used by the robot to finish task 3, the waterbottle task
-    """
-
     robot.stop()
     gyro_sensor.reset_angle(0)
     sensorVar = average_ultra_sensor()
@@ -67,7 +67,7 @@ def sequence2(): # MOVE THE BOTTLE
 
     turnRight(TURNANGLE = 55)
 
-    approach_bottle()
+    fail = approach_bottle()
 
     robot.stop()
     
@@ -82,30 +82,6 @@ def sequence2(): # MOVE THE BOTTLE
     grab(DIRECTION = 'DOWN')
 
     robot.straight(-100)
-    """
-    robot.straight()
-    if average_ultra_sensor() < 400:
-        #print('Bottle is close enough')
-        #robot.straight(110)
-        #grab()
-        #robot.straight(-100)
-        print('Im at the blue dot :))')
-        turnRight(TURNANGLE = 180)
-        print('I have turned 180 degrees')
-        find_color()
-        print('I foung Grey!')
-        find_color(COLOR = 'WHITE')
-        print('I found white!')
-        robot.straight(900)
-        grab(DIRECTION = 'DOWN')
-        robot.straight(-600)
-        turnLeft(TURNANGLE = 165)
-        find_color()
-        find_color(COLOR = 'WHITE')
-        turnLeft(TURNANGLE = 75)
-        turnLeft(TURNANGLE = 90)
-    else:
-    """
     robot.stop()
     turnLeft(TURNANGLE = 155)
     robot.straight(100)
@@ -119,7 +95,11 @@ def sequence3(): # OVER THE BRIDGE
     """
     print('entered 3')
     robot.stop()
+
+    robot.straight(50)
+    follow_turn(TURNANGLE=180, TURNSIDE='LEFT', FOLLOW_TURN_P_GAIN= 2.5, FOLLOW_TURN_SPEED= 100)
     #grab(ROTATIONS=15)
+    """
     turnLeft(TURNANGLE=45)
     find_color(COLOR = 'WHITE')
     find_color()
@@ -127,11 +107,12 @@ def sequence3(): # OVER THE BRIDGE
     robot.straight(30)
     turnLeft(TURNANGLE=45)
     robot.stop()
+    robot.straight(50) #changed
 
-    #Timer is reset, and the robot follows the line for 12 seconds, approximately the time it takes to cross the bridge
+    #Timer is reset, and the robot follows the line for 15 seconds, approximately the time it takes to cross the bridge
     timer.reset() #removes robot from black line, as not to trigger it twice.
     while timer.time() < 15000: #17000 works
-        follow_line(SPEED = 120, BREAKABLE = 1, P_GAIN = 1, SIDE = 'RIGHT') #follows the line, while watching for time
+        follow_line(SPEED = 150, BREAKABLE = 1, P_GAIN = 1, SIDE = 'RIGHT') #follows the line, while watching for time
         print(timer.time())
 
 
@@ -155,6 +136,7 @@ def sequence3(): # OVER THE BRIDGE
     find_color()
     find_color(COLOR = 'WHITE')
     turnRight(TURNANGLE = 45)
+    """
 
 def sequence4(): # CROSS LINES
     current_time = timer.time()
@@ -218,7 +200,6 @@ def sequence5(): # DARTBOARD
     else:
         robot.straight(-(robot.distance()+130))
         robot.straight(-600)
-
     turnLeft(TURNANGLE = 150)
     find_color()
     find_color(COLOR = 'WHITE')
@@ -355,16 +336,13 @@ def sequence9(): # THE LANDING STIP
     while robot.distance() < ((driven / 2) - 400):
         follow_line(SIDE = 'RIGHT', BREAKABLE = 1)
     turnLeft(TURNANGLE = 90)
-
-    """
-    while robot.distance() < 3520.0 / 2 :
-        follow_line(SIDE = ' LEFT', BREAKABLE = 1)
-    turnRight(90)
-    robot.straight(100)
-    """
+    robot.straight(150)
+    wait(20000)
     
-    print('cunt')
-    ev3.speaker.play(SoundFile.FANFARE)
+
+def intenseThread():
+    ev3.speaker.play_file(file="ShiverMeTimbers.wav")
+    ev3.speaker.play_file(file="PirateSong.wav")
 
 def follow_line(SPEED = 150, P_GAIN = 1.2, SIDE = 'LEFT', BREAKABLE = 0): #FOLLOW LINE, THE BASIC FUNCTION
     """
@@ -607,6 +585,7 @@ def find_bottle(FULL_ANGLE = 45, TURNSPEED = 1): #SWEEP OF ULTRASOUND TO FIND BO
     """
 
 def approach_bottle(sensorVar = 1000): #APPROACHES BOTTLE WITH A SPEED DEFINED BY DISTANCE. 
+    bottle_time = 7500
     print('Beginning fast approach!')
     reset_time=timer.time()
     i = 0
@@ -616,7 +595,7 @@ def approach_bottle(sensorVar = 1000): #APPROACHES BOTTLE WITH A SPEED DEFINED B
         sensorVar = average_ultra_sensor()
         follow_line(BREAKABLE = 1, SPEED = 50, P_GAIN = 2.2)
         current_time = timer.time() - reset_time
-        if current_time >5000:
+        if current_time >bottle_time:
             break
         wait(1)
 
@@ -624,18 +603,18 @@ def approach_bottle(sensorVar = 1000): #APPROACHES BOTTLE WITH A SPEED DEFINED B
         sensorVar = average_ultra_sensor()
         follow_line(BREAKABLE = 1, SPEED = 50, P_GAIN = 0.8)
         current_time = timer.time() - reset_time
-        if current_time >5000:
+        if current_time > bottle_time:
             break
         wait(1)
 
     average_dist = 100
     print('beginning slow approach' )
-    while average_dist > 40:
+    while average_dist > 45:
 
         average_dist = average_ultra_sensor()
         robot.drive(50,0)
         current_time = timer.time() - reset_time
-        if current_time >5000:
+        if current_time >bottle_time:
             break
 
     #print('bottle has been found!')
@@ -658,7 +637,8 @@ def around_bottle(rotation='LEFT'): #GO AROUND THE BOTTLE (SEQUENCE 8 & 10)
     return angleTurned
 
 def loop(): #MAIN CODE - THIS CODE CALLS THE SUBFUNCTIONS
-    wait(5000)
+    ST1 = Thread(target=intenseThread)
+    wait(10000)
     follow_line(SIDE = 'RIGHT')
     for sequence in range(1,10):
 
@@ -690,74 +670,7 @@ def loop(): #MAIN CODE - THIS CODE CALLS THE SUBFUNCTIONS
         
         elif sequence == 5: # DARTBOARD
             sequence5()
-
-        elif sequence == 6:
-            sequence6()
-            follow_turn(TURNSIDE = 'RIGHT', TURNANGLE = 135)
-
-        elif sequence == 7:
-            sequence7()
-            next_side = 'LEFT'
-
-        elif sequence == 8:
-            sequence8()
-            follow_turn(TURNSIDE = 'LEFT', TURNANGLE = 135)
-            
-        elif sequence == 9:
-            sequence9()
-            ev3.speaker.play_file(SoundFile.FANFARE)
-
-        else:
-            ev3.speaker.play_file(SoundFile.ERROR_ALARM)
-            break
-        
-        print('follow data:')
-        print(next_side)
-        print(next_P_GAIN)
-        follow_line(next_speed, next_P_GAIN, next_side, next_breakable)
-
-def grab_test():
-    grab()
-    wait(2000)
-    grab(DIRECTION = 'DOWN')
-
-def sound_test():
-    #ev3.speaker.play_file(SoundFile.BoxCat)
-    wait(1)
-
-def test_loop_dyb(): #TEST LOOP, OTHER DEFINITION OF SEQUNCE 9
-    wait(5000)
-    follow_line(SIDE = 'RIGHT')
-    for sequence in range(1,10):
-
-        next_speed = 150
-        next_side = 'RIGHT'
-        next_breakable = 0
-        next_P_GAIN = 1.2
-
-
-        print('Next sequence: ')
-        print(sequence)
-
-        if sequence == 1: # SWITCH LANES
-            sequence1()
-            follow_turn(TURNSIDE = 'RIGHT', TURNANGLE = 180)
-        
-        elif sequence == 2: # MOVE BOTTLE
-            sequence2()
-            next_side = 'LEFT'
-
-        elif sequence == 3: # OVER THE BRIDGE
-            sequence3()
-            next_side = 'LEFT'
-
-        elif sequence == 4: #SWITCH LANES 
-            sequence4()
-            follow_turn(TURNSIDE = 'LEFT', TURNANGLE = 90)
-            next_side = 'LEFT'    
-        
-        elif sequence == 5: # DARTBOARD
-            sequence5()
+            ST1.start()
 
         elif sequence == 6:
             sequence6()
@@ -784,28 +697,30 @@ def test_loop_dyb(): #TEST LOOP, OTHER DEFINITION OF SEQUNCE 9
         print(next_P_GAIN)
         follow_line(next_speed, next_P_GAIN, next_side, next_breakable)
 
-#grab_test()
+def grab_test():
+    grab()
+    wait(2000)
+    grab(DIRECTION = 'DOWN')
 
-#loop()
+def sound_test():
+    ST1 = Thread(target=intenseThread)
+    wait(5000)
+    ST1.start()
+    print('start')
+    grab()
+    grab(DIRECTION='DOWN')
+    wait(100)
+    ST1.stop()
+    grab()
+    grab(DIRECTION='DOWN')
 
-test_loop_dyb()
-
-#follow_turn(TURNSIDE = 'RIGHT', TURNANGLE = 180)
+def line_color():
+    while True:
+        average_line_sensor()
+        print(average_line_sensor())
+        wait(100)
+        
+#line_color()
+loop()
 
 #sound_test()
-
-#test_loop()
-
-#ultra_test()
-
-#angle_test()
-
-#line_test()
-
-#turnLeft()     
-
-#follow_line(SPEED=150, P_GAIN=2.5, DIRECTION=-1)
-
-#average_ultra_sensor()
-
-#sequence3()
